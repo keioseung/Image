@@ -450,7 +450,16 @@ AI_MODELS = {
 def preprocess_image(image, enhancement_level=1.2):
     """이미지 품질 향상을 위한 전처리"""
     try:
-        img = Image.open(image).convert("RGB")
+        # Streamlit UploadedFile 객체를 바이트로 변환
+        if hasattr(image, 'read'):
+            # UploadedFile 객체인 경우
+            img_bytes = image.read()
+            img = Image.open(BytesIO(img_bytes)).convert("RGB")
+            # 파일 포인터를 다시 처음으로 되돌림
+            image.seek(0)
+        else:
+            # 일반 파일 경로인 경우
+            img = Image.open(image).convert("RGB")
         
         # 밝기 및 대비 향상
         enhancer = ImageEnhance.Contrast(img)
@@ -823,12 +832,20 @@ def main():
             
             with col2:
                 # 이미지 정보
-                img = Image.open(uploaded_image)
-                st.markdown("### 📋 이미지 정보")
-                st.write(f"**크기:** {img.size[0]} x {img.size[1]} px")
-                st.write(f"**모드:** {img.mode}")
-                st.write(f"**형식:** {img.format}")
-                st.write(f"**파일 크기:** {uploaded_image.size / 1024:.1f} KB")
+                try:
+                    # UploadedFile을 바이트로 변환하여 이미지 정보 가져오기
+                    img_bytes = uploaded_image.read()
+                    img = Image.open(BytesIO(img_bytes))
+                    uploaded_image.seek(0)  # 파일 포인터 되돌리기
+                    
+                    st.markdown("### 📋 이미지 정보")
+                    st.write(f"**크기:** {img.size[0]} x {img.size[1]} px")
+                    st.write(f"**모드:** {img.mode}")
+                    st.write(f"**형식:** {img.format}")
+                    st.write(f"**파일 크기:** {uploaded_image.size / 1024:.1f} KB")
+                except Exception as e:
+                    st.error(f"이미지 정보 읽기 오류: {e}")
+                    st.write(f"**파일 크기:** {uploaded_image.size / 1024:.1f} KB")
             
             lang_code = LANG_CODE_MAP[ocr_lang]
             
