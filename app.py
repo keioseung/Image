@@ -391,26 +391,6 @@ html, body, [class*="css"] {
     border-radius: 12px;
     margin: 1rem 0;
 }
-
-/* ChatGPT 버튼 스타일 */
-.chatgpt-btn {
-    background: linear-gradient(135deg, #10a37f 0%, #0d8a6b 100%);
-    color: white !important;
-    border: none;
-    border-radius: 16px;
-    padding: 1rem 2rem;
-    font-weight: 600;
-    font-size: 1rem;
-    box-shadow: 0 8px 25px rgba(16, 163, 127, 0.3);
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.chatgpt-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 35px rgba(16, 163, 127, 0.4);
-    background: linear-gradient(135deg, #0d8a6b 0%, #0a6b5a 100%);
-}
 </style>
 
 <div class="main-header">
@@ -716,56 +696,6 @@ def export_text_data(text, analysis, filename="extracted_text"):
         st.error(f"내보내기 중 오류: {e}")
         return "", ""
 
-# ChatGPT 연동 함수
-def create_chatgpt_link(text, filename="extracted_text"):
-    """ChatGPT에 텍스트를 전달하는 링크 생성"""
-    try:
-        # 텍스트 전처리 (너무 길면 자르기)
-        max_length = 3000  # ChatGPT URL 길이 제한 고려
-        if len(text) > max_length:
-            text = text[:max_length] + "..."
-        
-        # "알기 쉽게" 프롬프트 추가
-        prompt = f"알기 쉽게 설명해주세요: {text}"
-        
-        # URL 인코딩
-        import urllib.parse
-        encoded_prompt = urllib.parse.quote(prompt)
-        
-        # ChatGPT URL 생성
-        chatgpt_url = f"https://chat.openai.com/?q={encoded_prompt}"
-        
-        return chatgpt_url
-    except Exception as e:
-        st.error(f"ChatGPT 링크 생성 중 오류: {e}")
-        return None
-
-def open_chatgpt_with_text(text, filename="extracted_text"):
-    """ChatGPT를 새 탭에서 열고 텍스트 전달"""
-    try:
-        chatgpt_url = create_chatgpt_link(text, filename)
-        if chatgpt_url:
-            # JavaScript로 새 탭에서 열기
-            js_code = f"""
-            <script>
-                window.open('{chatgpt_url}', '_blank');
-            </script>
-            """
-            st.markdown(js_code, unsafe_allow_html=True)
-            
-            # 대안: 링크 버튼 제공
-            st.markdown(f"""
-            <a href="{chatgpt_url}" target="_blank" class="samsung-btn" style="display: inline-block; text-decoration: none; margin: 0.5rem; background: linear-gradient(135deg, #10a37f 0%, #0d8a6b 100%);">
-                🤖 ChatGPT에서 "알기 쉽게" 설명받기
-            </a>
-            """, unsafe_allow_html=True)
-            
-            return True
-        return False
-    except Exception as e:
-        st.error(f"ChatGPT 열기 중 오류: {e}")
-        return False
-
 # 메인 앱
 def main():
     # 사이드바 설정
@@ -819,7 +749,7 @@ def main():
             # 이미지 표시
             col1, col2 = st.columns([2, 1])
             with col1:
-                st.image(uploaded_image, caption="업로드된 이미지", use_container_width=True)
+                st.image(uploaded_image, caption="업로드된 이미지", use_column_width=True)
             
             with col2:
                 # 이미지 정보
@@ -867,37 +797,6 @@ def main():
                         json_link, text_link = export_text_data(text, analysis, uploaded_image.name)
                         st.markdown(json_link, unsafe_allow_html=True)
                         st.markdown(text_link, unsafe_allow_html=True)
-                    
-                    # ChatGPT 연동 버튼
-                    st.markdown("### 🤖 AI 설명 요청")
-                    
-                    # 메인 ChatGPT 버튼
-                    if st.button("💡 ChatGPT에서 '알기 쉽게' 설명받기", use_container_width=True, key="chatgpt_btn", help="추출된 텍스트를 ChatGPT에 전달하여 쉽게 설명받습니다"):
-                        with st.spinner("ChatGPT 준비 중..."):
-                            if open_chatgpt_with_text(text, uploaded_image.name):
-                                st.success("✅ ChatGPT가 새 탭에서 열렸습니다!")
-                                st.info("💡 팁: ChatGPT에서 '알기 쉽게 설명해주세요'라는 프롬프트와 함께 텍스트가 자동으로 입력됩니다.")
-                            else:
-                                st.error("❌ ChatGPT 열기 실패")
-                    
-                    # 추가 옵션
-                    with st.expander("🔗 ChatGPT 링크 옵션"):
-                        chatgpt_url = create_chatgpt_link(text, uploaded_image.name)
-                        if chatgpt_url:
-                            st.markdown("**ChatGPT 링크:**")
-                            st.code(chatgpt_url, language="text")
-                            
-                            # 링크 복사 버튼
-                            st.markdown(f"""
-                            <a href="{chatgpt_url}" target="_blank" class="chatgpt-btn" style="display: inline-block; text-decoration: none; margin: 0.5rem;">
-                                🔗 ChatGPT에서 열기
-                            </a>
-                            """, unsafe_allow_html=True)
-                            
-                            # 프롬프트 미리보기
-                            st.markdown("**전송될 프롬프트 미리보기:**")
-                            preview_prompt = f"알기 쉽게 설명해주세요: {text[:200]}{'...' if len(text) > 200 else ''}"
-                            st.info(preview_prompt)
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                 
@@ -966,36 +865,6 @@ def main():
                 with st.expander(f"📄 {result['filename']} - {result['status']}"):
                     if result['text']:
                         st.text_area("추출된 텍스트", value=result['text'], height=150, key=f"batch_{result['filename']}")
-                        
-                        # 배치 처리용 ChatGPT 버튼
-                        st.markdown("### 🤖 AI 설명 요청")
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            if st.button(f"💡 ChatGPT에서 '알기 쉽게' 설명받기", key=f"batch_chatgpt_{result['filename']}", use_container_width=True):
-                                with st.spinner(f"ChatGPT 준비 중... ({result['filename']})"):
-                                    if open_chatgpt_with_text(result['text'], result['filename']):
-                                        st.success(f"✅ {result['filename']} ChatGPT 열기 성공!")
-                                        st.info("💡 ChatGPT에서 '알기 쉽게 설명해주세요'라는 프롬프트와 함께 텍스트가 자동으로 입력됩니다.")
-                                    else:
-                                        st.error(f"❌ {result['filename']} ChatGPT 열기 실패")
-                        
-                        with col2:
-                            # ChatGPT 링크 옵션
-                            chatgpt_url = create_chatgpt_link(result['text'], result['filename'])
-                            if chatgpt_url:
-                                st.markdown(f"""
-                                <a href="{chatgpt_url}" target="_blank" class="chatgpt-btn" style="display: inline-block; text-decoration: none; margin: 0.5rem; width: 100%; text-align: center;">
-                                    🔗 ChatGPT에서 열기
-                                </a>
-                                """, unsafe_allow_html=True)
-                        
-                        # 프롬프트 미리보기
-                        with st.expander(f"📋 {result['filename']} - 전송될 프롬프트 미리보기"):
-                            preview_prompt = f"알기 쉽게 설명해주세요: {result['text'][:300]}{'...' if len(result['text']) > 300 else ''}"
-                            st.info(preview_prompt)
-                            st.code(chatgpt_url, language="text")
-                        
                         if result['analysis']:
                             col1, col2, col3 = st.columns(3)
                             with col1:
