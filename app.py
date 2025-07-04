@@ -454,9 +454,19 @@ def preprocess_image(image, enhancement_level=1.2):
         if hasattr(image, 'read'):
             # UploadedFile 객체인 경우
             img_bytes = image.read()
-            img = Image.open(BytesIO(img_bytes)).convert("RGB")
             # 파일 포인터를 다시 처음으로 되돌림
             image.seek(0)
+            
+            # 이미지 형식 검증
+            if len(img_bytes) == 0:
+                st.error("빈 이미지 파일입니다.")
+                return None
+            
+            try:
+                img = Image.open(BytesIO(img_bytes)).convert("RGB")
+            except Exception as img_error:
+                st.error(f"이미지 형식이 지원되지 않습니다: {img_error}")
+                return None
         else:
             # 일반 파일 경로인 경우
             img = Image.open(image).convert("RGB")
@@ -481,6 +491,10 @@ def preprocess_image(image, enhancement_level=1.2):
 def advanced_ocr_extraction(image, lang_code, enhancement_level=1.2):
     """고급 OCR 텍스트 추출"""
     try:
+        # 파일 크기 확인
+        if hasattr(image, 'size') and image.size == 0:
+            return "빈 파일입니다."
+        
         # 이미지 전처리
         processed_img = preprocess_image(image, enhancement_level)
         if processed_img is None:
@@ -839,10 +853,24 @@ def main():
         
         # 이미지 처리
         if uploaded_image is not None:
+            # 파일 검증
+            if uploaded_image.size == 0:
+                st.error("❌ 빈 파일입니다. 다시 업로드해주세요.")
+                return
+            elif uploaded_image.size > 200 * 1024 * 1024:  # 200MB 제한
+                st.error("❌ 파일 크기가 200MB를 초과합니다.")
+                return
             # 이미지 표시
             col1, col2 = st.columns([2, 1])
             with col1:
-                st.image(uploaded_image, caption="업로드된 이미지", use_container_width=True)
+                try:
+                    # 이미지를 바이트로 읽어서 표시
+                    img_bytes = uploaded_image.read()
+                    uploaded_image.seek(0)  # 파일 포인터 되돌리기
+                    st.image(img_bytes, caption="업로드된 이미지", use_container_width=True)
+                except Exception as e:
+                    st.error(f"이미지 표시 오류: {e}")
+                    st.warning("이미지를 표시할 수 없지만 OCR 처리는 계속 진행됩니다.")
             
             with col2:
                 # 이미지 정보
