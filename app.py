@@ -674,7 +674,21 @@ def batch_process_images(uploaded_files, lang_code, enhancement_level=1.2):
     for i, file in enumerate(uploaded_files):
         status_text.text(f"처리 중: {file.name} ({i+1}/{len(uploaded_files)})")
         
+        # 파일 크기 확인
+        if file.size == 0:
+            results.append({
+                'filename': file.name,
+                'text': '',
+                'analysis': {},
+                'status': '오류: 빈 파일 (0.0B)',
+                'timestamp': datetime.now().isoformat()
+            })
+            progress_bar.progress((i + 1) / len(uploaded_files))
+            continue
+        
         try:
+            # 파일 포인터를 처음으로 되돌림
+            file.seek(0)
             text = advanced_ocr_extraction(file, lang_code, enhancement_level)
             analysis = analyze_text(text)
             
@@ -969,7 +983,30 @@ def main():
         batch_lang = st.selectbox("🌐 배치 처리 언어 선택", list(LANG_CODE_MAP.keys()), index=0)
         
         if uploaded_files and st.button("🚀 배치 처리 시작", use_container_width=True):
-            batch_results = batch_process_images(uploaded_files, LANG_CODE_MAP[batch_lang], enhancement_level)
+            # 파일 검증
+            valid_files = []
+            invalid_files = []
+            
+            for file in uploaded_files:
+                if file.size == 0:
+                    invalid_files.append(f"{file.name} (빈 파일)")
+                elif file.size > 200 * 1024 * 1024:  # 200MB 제한
+                    invalid_files.append(f"{file.name} (파일 크기 초과)")
+                else:
+                    valid_files.append(file)
+            
+            if invalid_files:
+                st.error("❌ 다음 파일들이 처리할 수 없습니다:")
+                for invalid in invalid_files:
+                    st.write(f"• {invalid}")
+                
+                if not valid_files:
+                    st.warning("💡 유효한 파일이 없습니다. 다시 업로드해주세요.")
+                    return
+            
+            if valid_files:
+                st.info(f"✅ {len(valid_files)}개 파일 처리 시작...")
+                batch_results = batch_process_images(valid_files, LANG_CODE_MAP[batch_lang], enhancement_level)
             
             # 결과 표시
             st.markdown("### 📊 배치 처리 결과")
@@ -981,7 +1018,7 @@ def main():
             # 상세 결과
             for result in batch_results:
                 with st.expander(f"📄 {result['filename']} - {result['status']}"):
-                    if result['text']:
+                    if result['status'] == '성공' and result['text']:
                         st.text_area("추출된 텍스트", value=result['text'], height=150, key=f"batch_{result['filename']}")
                         
                         # 배치 처리용 ChatGPT 버튼
@@ -1021,6 +1058,14 @@ def main():
                                 st.metric("단어 수", result['analysis'].get('word_count', 0))
                             with col3:
                                 st.metric("감지된 언어", result['analysis'].get('detected_language', 'N/A'))
+                    elif result['status'].startswith('오류'):
+                        st.error(f"❌ 처리 실패: {result['status']}")
+                        if "빈 파일" in result['status']:
+                            st.warning("💡 파일이 비어있습니다. 다시 업로드해주세요.")
+                        elif "이미지 전처리" in result['status']:
+                            st.warning("💡 이미지 파일 형식이 지원되지 않거나 손상되었습니다.")
+                    else:
+                        st.warning("⚠️ 텍스트가 추출되지 않았습니다.")
         
         st.markdown('</div>', unsafe_allow_html=True)
     
