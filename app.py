@@ -819,7 +819,7 @@ def main():
             # 이미지 표시
             col1, col2 = st.columns([2, 1])
             with col1:
-                st.image(uploaded_image, caption="업로드된 이미지", use_column_width=True)
+                st.image(uploaded_image, caption="업로드된 이미지", use_container_width=True)
             
             with col2:
                 # 이미지 정보
